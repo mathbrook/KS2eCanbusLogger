@@ -1,10 +1,8 @@
 
 /*
- * Teensy 3.5 Telemetry Control Unit code
- * Written by Soohyun Kim, with assistance by Ryan Gallaway and Nathan Cheek. 
- * 
- * Rev 2 - 4/23/2019
- * Last Modified: 2/8/2022
+ * Teensy 3.5 crude logger
+ yoinked from hytech racing "telemetry control unit" repo
+ removed all features except can logging to SD
  */
 #define GPS_EN false
 #include <SD.h>
@@ -94,7 +92,6 @@ void setup() {
 void loop() {
     /* Process and log incoming CAN messages */
     parse_can_message();
-    /* Send messages over XBee */
     /* Flush data to SD card occasionally */
     if (timer_flush.check()) {
         logger.flush(); // Flush data to disk (data is also flushed whenever the 512 Byte buffer fills up, but this call ensures we don't lose more than a second of data when the car turns off)
@@ -118,13 +115,6 @@ void loop() {
 void parse_can_message() {
     while (CAN.read(msg_rx)) {
         write_to_SD(&msg_rx); // Write to SD card buffer (if the buffer fills up, triggering a flush to disk, this will take 8ms)
-        // Identify received CAN messages and load contents into corresponding structs
-        /*
-        if (msg_rx.id == ID_MC_ANALOG_INPUTS_VOLTAGES)
-            mc_analog_input_voltages.load(msg_rx.buf);
-        if (msg_rx.id == ID_MC_DIGITAL_INPUT_STATUS)
-            mc_digital_input_status.load(msg_rx.buf);
-        */
     }
 }
 void write_to_SD(CAN_message_t *msg) { // Note: This function does not flush data to disk! It will happen when the buffer fills or when the above flush timer fires
