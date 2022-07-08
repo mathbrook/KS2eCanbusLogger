@@ -4,42 +4,42 @@
  yoinked from hytech racing "telemetry control unit" repo
  removed all features except can logging to SD
  */
-#define GPS_EN false
+#include <Arduino.h>
 #include <SD.h>
-#include <kinetis_flexcan.h>
 #include <Wire.h>
 #include <TimeLib.h>
 #include <Metro.h>
-#include <FlexCAN.h>
+#include <FlexCAN_T4.h>
 /*
  * CAN Variables
  */
-FlexCAN CAN;
+FlexCAN_T4<CAN0, RX_SIZE_256, TX_SIZE_16> CAN;
 static CAN_message_t msg_rx;
-// static CAN_message_t msg_tx;
+static CAN_message_t msg_tx;
 // static CAN_message_t xb_msg;
-
 File logger;
-
 /*
  * Variables to help with time calculation
  */
 uint64_t global_ms_offset = 0;
 uint64_t last_sec_epoch;
 Metro timer_debug_RTC = Metro(1000);
-Metro timer_flush = Metro(100);
+Metro timer_flush = Metro(500);
 void parse_can_message();
 void write_to_SD(CAN_message_t *msg);
 time_t getTeensy3Time();
 void sd_date_time(uint16_t* date, uint16_t* time);
+uint8_t blank[]={1,2,0,0,0,0,0,0};
 void setup() {
+    msg_tx.id=0xC9;
+    memcpy(msg_tx.buf,blank,sizeof(msg_tx.buf));
     delay(5000); // Prevents suprious text files when turning the car on and off rapidly
-    
+    pinMode(LED_BUILTIN,OUTPUT);
     /* Set up Serial, CAN */
-    Serial.begin(115200);
+    //Serial.begin(115200);
 
     /* Set up real-time clock */
-    //Teensy3Clock.set(9999999999); // set time (epoch) at powerup  (COMMENT OUT THIS LINE AND PUSH ONCE RTC HAS BEEN SET!!!!)
+    //Teensy3Clock.set(1656732300); // set time (epoch) at powerup  (COMMENT OUT THIS LINE AND PUSH ONCE RTC HAS BEEN SET!!!!)
     setSyncProvider(getTeensy3Time); // registers Teensy RTC as system time
     if (timeStatus() != timeSet) {
         Serial.println("RTC not set up - uncomment the Teensy3Clock.set() function call to set the time");
@@ -49,16 +49,8 @@ void setup() {
     last_sec_epoch = Teensy3Clock.get();
     
     //FLEXCAN0_MCR &= 0xFFFDFFFF; // Enables CAN message self-reception
-    CAN.begin(500000);
-    
-  #if GPS_EN
-    /* Set up GPS */
-    GPS.begin(9600);
-    GPS.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCGGA); // specify data to be received (minimum + fix)
-    GPS.sendCommand(PMTK_SET_NMEA_UPDATE_10HZ); // set update rate (10Hz)
-    GPS.sendCommand(PGCMD_ANTENNA); // report data about antenna
-  #endif
-  
+    CAN.begin();
+    CAN.setBaudRate(1000000);
     /* Set up SD card */
     Serial.println("Initializing SD card...");
     SdFile::dateTimeCallback(sd_date_time); // Set date/time callback function
@@ -81,7 +73,8 @@ void setup() {
     }
     
     if (logger) {
-        Serial.println("Successfully opened SD file");
+        Serial.print("Successfully opened SD file: ");
+        Serial.println(filename);
     } else {
         Serial.println("Failed to open SD file");
     }
@@ -90,6 +83,7 @@ void setup() {
     logger.flush();
 }
 void loop() {
+  digitalWrite(LED_BUILTIN,LOW);
     /* Process and log incoming CAN messages */
     parse_can_message();
     /* Flush data to SD card occasionally */
@@ -99,27 +93,21 @@ void loop() {
     /* Print timestamp to serial occasionally */
     if (timer_debug_RTC.check()) {
         Serial.println(Teensy3Clock.get());
+        //CAN.write(msg_tx);
     }
-  #if GPS_EN
-    /* Process GPS readings */
-    GPS.read();
-    if (GPS.newNMEAreceived()) {
-        GPS.parse(GPS.lastNMEA());
-        pending_gps_data = true;
-    }
-    if (timer_gps.check() && pending_gps_data) {
-        process_gps();
-    }
-  #endif
 }
 void parse_can_message() {
     while (CAN.read(msg_rx)) {
+
         write_to_SD(&msg_rx); // Write to SD card buffer (if the buffer fills up, triggering a flush to disk, this will take 8ms)
+        
     }
 }
 void write_to_SD(CAN_message_t *msg) { // Note: This function does not flush data to disk! It will happen when the buffer fills or when the above flush timer fires
     // Calculate Time
     //This block is verified to loop through
+    digitalWrite(LED_BUILTIN,HIGH);
+
     uint64_t sec_epoch = Teensy3Clock.get();
     if (sec_epoch != last_sec_epoch) {
         global_ms_offset = millis() % 1000;
