@@ -50,7 +50,7 @@ void setup() {
     
     //FLEXCAN0_MCR &= 0xFFFDFFFF; // Enables CAN message self-reception
     CAN.begin();
-    CAN.setBaudRate(1000000);
+    CAN.setBaudRate(125000);
     /* Set up SD card */
     Serial.println("Initializing SD card...");
     SdFile::dateTimeCallback(sd_date_time); // Set date/time callback function
