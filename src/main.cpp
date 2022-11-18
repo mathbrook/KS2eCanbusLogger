@@ -24,7 +24,7 @@ File logger;
 uint64_t global_ms_offset = 0;
 uint64_t last_sec_epoch;
 Metro timer_debug_RTC = Metro(1000);
-Metro timer_flush = Metro(500);
+Metro timer_flush = Metro(5);
 void parse_can_message();
 void write_to_SD(CAN_message_t *msg);
 time_t getTeensy3Time();
@@ -39,7 +39,7 @@ void setup() {
     //Serial.begin(115200);
 
     /* Set up real-time clock */
-    //Teensy3Clock.set(1656732300); // set time (epoch) at powerup  (COMMENT OUT THIS LINE AND PUSH ONCE RTC HAS BEEN SET!!!!)
+    //Teensy3Clock.set(1665542615); // set time (epoch) at powerup  (COMMENT OUT THIS LINE AND PUSH ONCE RTC HAS BEEN SET!!!!)
     setSyncProvider(getTeensy3Time); // registers Teensy RTC as system time
     if (timeStatus() != timeSet) {
         Serial.println("RTC not set up - uncomment the Teensy3Clock.set() function call to set the time");
@@ -50,7 +50,7 @@ void setup() {
     
     //FLEXCAN0_MCR &= 0xFFFDFFFF; // Enables CAN message self-reception
     CAN.begin();
-    CAN.setBaudRate(125000);
+    CAN.setBaudRate(1000000);
     /* Set up SD card */
     Serial.println("Initializing SD card...");
     SdFile::dateTimeCallback(sd_date_time); // Set date/time callback function
