@@ -13,7 +13,8 @@
 /*
  * CAN Variables
  */
-FlexCAN_T4<CAN0, RX_SIZE_256, TX_SIZE_16> CAN;
+#define CAN_CHANNEL CAN1 //CAN1 is what is connected on the LORA logger
+FlexCAN_T4<CAN_CHANNEL, RX_SIZE_256, TX_SIZE_16> CAN;
 static CAN_message_t msg_rx;
 static CAN_message_t msg_tx;
 // static CAN_message_t xb_msg;
@@ -50,7 +51,7 @@ void setup() {
     
     //FLEXCAN0_MCR &= 0xFFFDFFFF; // Enables CAN message self-reception
     CAN.begin();
-    CAN.setBaudRate(1000000);
+    CAN.setBaudRate(500000);
     /* Set up SD card */
     Serial.println("Initializing SD card...");
     SdFile::dateTimeCallback(sd_date_time); // Set date/time callback function
