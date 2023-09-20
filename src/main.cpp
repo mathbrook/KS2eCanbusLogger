@@ -37,6 +37,8 @@ void setup() {
     msg_tx.id=0xC9;
     memcpy(msg_tx.buf,blank,sizeof(msg_tx.buf));
     delay(5000); // Prevents suprious text files when turning the car on and off rapidly
+    Serial.print("Firmware Version: ");
+    Serial.println(AUTO_VERSION);   // Use the preprocessor directive
     pinMode(LED_BUILTIN,OUTPUT);
     /* Set up Serial, CAN */
     //Serial.begin(115200);
