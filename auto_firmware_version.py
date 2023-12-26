@@ -1,5 +1,5 @@
 import pkg_resources
-
+# yipee!
 Import("env")
 required_pkgs = {'dulwich'}
 installed_pkgs = {pkg.key for pkg in pkg_resources.working_set}
