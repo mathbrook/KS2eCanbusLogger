@@ -13,7 +13,8 @@
 /*
  * CAN Variables
  */
-FlexCAN_T4<CAN0, RX_SIZE_256, TX_SIZE_16> CAN;
+#define CAN_CHANNEL CAN1 //CAN1 is what is connected on the LORA logger
+FlexCAN_T4<CAN_CHANNEL, RX_SIZE_256, TX_SIZE_16> CAN;
 static CAN_message_t msg_rx;
 static CAN_message_t msg_tx;
 // static CAN_message_t xb_msg;
@@ -23,8 +24,10 @@ File logger;
  */
 uint64_t global_ms_offset = 0;
 uint64_t last_sec_epoch;
-Metro timer_debug_RTC = Metro(1000);
-Metro timer_flush = Metro(5);
+Metro timer_debug_RTC = Metro(1000,1);
+Metro timer_flush = Metro(5,1);
+void digitalClockDisplay();
+void printDigits(int digits);
 void parse_can_message();
 void write_to_SD(CAN_message_t *msg);
 time_t getTeensy3Time();
@@ -34,6 +37,8 @@ void setup() {
     msg_tx.id=0xC9;
     memcpy(msg_tx.buf,blank,sizeof(msg_tx.buf));
     delay(5000); // Prevents suprious text files when turning the car on and off rapidly
+    Serial.print("Firmware Version: ");
+    Serial.println(AUTO_VERSION);   // Use the preprocessor directive
     pinMode(LED_BUILTIN,OUTPUT);
     /* Set up Serial, CAN */
     //Serial.begin(115200);
@@ -50,13 +55,16 @@ void setup() {
     
     //FLEXCAN0_MCR &= 0xFFFDFFFF; // Enables CAN message self-reception
     CAN.begin();
-    CAN.setBaudRate(1000000);
+    CAN.setBaudRate(500000);
     /* Set up SD card */
     Serial.println("Initializing SD card...");
     SdFile::dateTimeCallback(sd_date_time); // Set date/time callback function
     if (!SD.begin(BUILTIN_SDCARD)) { // Begin Arduino SD API (Teensy 3.5)
         Serial.println("SD card failed or not present");
     }
+    digitalClockDisplay();
+    delay(1000);
+    digitalClockDisplay();
     char filename[] = "data0000.CSV";
     for (uint8_t i = 0; i < 10000; i++) {
         filename[4] = i / 1000     + '0';
@@ -98,9 +106,9 @@ void loop() {
 }
 void parse_can_message() {
     while (CAN.read(msg_rx)) {
-
-        write_to_SD(&msg_rx); // Write to SD card buffer (if the buffer fills up, triggering a flush to disk, this will take 8ms)
         
+            write_to_SD(&msg_rx); // Write to SD card buffer (if the buffer fills up, triggering a flush to disk, this will take 8ms)
+                
     }
 }
 void write_to_SD(CAN_message_t *msg) { // Note: This function does not flush data to disk! It will happen when the buffer fills or when the above flush timer fires
@@ -116,6 +124,10 @@ void write_to_SD(CAN_message_t *msg) { // Note: This function does not flush dat
     uint64_t current_time = sec_epoch * 1000 + (millis() - global_ms_offset) % 1000;
 
     // Log to SD
+    Serial.print(current_time);
+    Serial.print(",");
+    Serial.print(msg->id,HEX);
+    Serial.println();
     logger.print(current_time);
     logger.print(",");
     logger.print(msg->id, HEX);
@@ -138,4 +150,26 @@ void sd_date_time(uint16_t* date, uint16_t* time) {
     *date = FAT_DATE(year(), month(), day());
     // return time using FAT_TIME macro to format fields
     *time = FAT_TIME(hour(), minute(), second());
+}
+
+void digitalClockDisplay(){
+  // digital clock display of the time
+  Serial.print(hour());
+  printDigits(minute());
+  printDigits(second());
+  Serial.print("_");
+  Serial.print(day());
+  Serial.print("_");
+  Serial.print(month());
+  Serial.print("_");
+  Serial.print(year()); 
+  Serial.println(); 
+}
+
+void printDigits(int digits){
+  // utility function for digital clock display: prints preceding colon and leading 0
+  Serial.print("-");
+  if(digits < 10)
+    Serial.print('0');
+  Serial.print(digits);
 }
